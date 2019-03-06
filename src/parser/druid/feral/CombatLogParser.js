@@ -2,6 +2,7 @@ import CoreCombatLogParser from 'parser/core/CombatLogParser';
 
 import RakeBleed from './normalizers/RakeBleed';
 import ComboPointsFromAoE from './normalizers/ComboPointsFromAoE';
+import RipCastNormalizer from './normalizers/RipCastNormalizer';
 
 import Abilities from './modules/Abilities';
 import Buffs from './modules/Buffs';
@@ -48,6 +49,7 @@ class CombatLogParser extends CoreCombatLogParser {
     // Normalizers
     rakeBleed: RakeBleed,
     comboPointsFromAoE: ComboPointsFromAoE,
+    ripCastNormalizer: RipCastNormalizer,
 
     // Features
     alwaysBeCasting: AlwaysBeCasting,

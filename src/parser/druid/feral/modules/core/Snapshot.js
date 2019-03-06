@@ -10,7 +10,7 @@ import calculateEffectiveDamage from 'parser/core/calculateEffectiveDamage';
 import StatisticsListBox from 'interface/others/StatisticsListBox';
 import { PANDEMIC_FRACTION, PROWL_RAKE_DAMAGE_BONUS, TIGERS_FURY_DAMAGE_BONUS, BLOODTALONS_DAMAGE_BONUS } from '../../constants';
 
-const debug = false;
+const debug = true;
 
 /**
  * Feral has a snapshotting mechanic which means the effect of some buffs are maintained over the duration of
@@ -133,7 +133,7 @@ class Snapshot extends Analyzer {
     const stateNew = this.makeNewState(event, stateOld);
     this.stateByTarget[targetString] = stateNew;
 
-    debug && console.log(`DoT ${this.constructor.debuffId} applied at ${this.owner.formatTimestamp(event.timestamp, 3)} Prowl:${stateNew.prowl}, TF: ${stateNew.tigersFury}, BT: ${stateNew.bloodtalons}. Expires at ${this.owner.formatTimestamp(stateNew.expireTime, 3)}`);
+    debug && console.log(`DoT ${this.constructor.debuffId} applied at ${this.owner.formatTimestamp(event.timestamp, 3)} on ${targetString} Prowl:${stateNew.prowl}, TF: ${stateNew.tigersFury}, BT: ${stateNew.bloodtalons}. Expires at ${this.owner.formatTimestamp(stateNew.expireTime, 3)}`);
 
     this.checkRefreshRule(stateNew);
   }
