@@ -105,6 +105,15 @@ class Abilities extends CoreAbilities {
         primaryCoefficient: 0.69,
       },
       {
+        spell: SPELLS.PRIMAL_WRATH_TALENT,
+        category: Abilities.SPELL_CATEGORIES.ROTATIONAL_AOE,
+        enabled: combatant.hasTalent(SPELLS.PRIMAL_WRATH_TALENT.id),
+        gcd: {
+          static: 1000,
+        },
+        timelineSortIndex: 6,
+      },
+      {
         spell: SPELLS.SWIPE_BEAR,
         category: Abilities.SPELL_CATEGORIES.ROTATIONAL_AOE,
         enabled: !combatant.hasTalent(SPELLS.BRUTAL_SLASH_TALENT.id),

@@ -4,8 +4,7 @@ import SPELLS from 'common/SPELLS';
 import SpellLink from 'common/SpellLink';
 import Analyzer from 'parser/core/Analyzer';
 import HIT_TYPES from 'game/HIT_TYPES';
-import Statistic from 'interface/statistics/Statistic';
-import DonutChart from 'interface/statistics/components/DonutChart';
+import AbilityTracker from 'parser/shared/modules/AbilityTracker';
 
 const debug = false;
 
@@ -20,6 +19,7 @@ const POTENTIAL_SPENDERS = [
   SPELLS.SWIPE_CAT,
   SPELLS.THRASH_FERAL,
   SPELLS.MAIM,
+  SPELLS.PRIMAL_WRATH_TALENT,
   // Feral Frenzy would be a spender, but it's a talent on the same row as Bloodtalons
 ];
 
@@ -31,6 +31,7 @@ const HIT_TYPES_THAT_DONT_CONSUME = [
   HIT_TYPES.PARRY,
 ];
 
+const CHART_SIZE = 80;
 const CHART_COLOR_WASTED = '#d53805';
 const CHART_COLOR_SPENDERS = [
   '#987284',
@@ -41,6 +42,7 @@ const CHART_COLOR_SPENDERS = [
   '#f9cb40',
   '#603140',
   '#e0607e',
+  '#e2e3a5',
 ];
 
 /**
@@ -52,6 +54,10 @@ const CHART_COLOR_SPENDERS = [
  * - Rip (DoT with no initial damage) success is detected by watching for debuff apply or refresh.
  */
 class Bloodtalons extends Analyzer {
+  static dependencies = {
+    abilityTracker: AbilityTracker,
+  };
+
   spenders = null;
   currentStack = 0;
   expireTime = null;
@@ -70,18 +76,21 @@ class Bloodtalons extends Analyzer {
       throw new Error(`Bloodtalons has ${POTENTIAL_SPENDERS.length} potential spenders but only ${CHART_COLOR_SPENDERS.length} chart colors defined.`);
     }
     this.active = this.selectedCombatant.hasTalent(SPELLS.BLOODTALONS_TALENT.id);
-    if (this.active) {
-      /**
-       * The spenders array could be built during parsing, but doing it at the start means it'll
-       * always list the spenders in the same order. That should make comparison between fights
-       * or players easier for the user.
-       */
-      this.spenders = POTENTIAL_SPENDERS.map((spender, index) => ({
-        spell: spender,
-        chartColor: CHART_COLOR_SPENDERS[index],
-        count: 0,
-      }));
+    if (!this.active) {
+      return;
     }
+    /**
+     * The spenders array could be built during parsing, but doing it at the start means it'll
+     * always list the spenders in the same order. That should make comparison between fights
+     * or players easier for the user.
+     */
+    this.spenders = POTENTIAL_SPENDERS.map((spender, index) => ({
+      spell: spender,
+      chartColor: CHART_COLOR_SPENDERS[index],
+      count: 0,
+    }));
+    
+    //TODO: add event listeners, convert functions below
   }
 
   on_fightend() {
@@ -154,7 +163,8 @@ class Bloodtalons extends Analyzer {
   }
 
   applyDebuff(event) {
-    if (this.currentStack === 0 || SPELLS.RIP.id !== event.ability.guid) {
+    if (this.currentStack === 0 || SPELLS.RIP.id !== event.ability.guid || (event.castEvent && event.castEvent.ability.guid !== SPELLS.RIP.id)) {
+      // ignore debuffs which are not Rip, and ignore Rip debuffs which didn't come from the Rip ability (such as those from Primal Wrath)
       return;
     }
     this.currentStack -= 1;
@@ -218,29 +228,102 @@ class Bloodtalons extends Analyzer {
     });
   }
 
-  get combinedChart() {
+  legend(items, total) {
+    const numItems = items.length;
+    return items.map(({ color, label, tooltip, value, spellId }, index) => {
+      label = spellId ? (
+        <SpellLink id={spellId}>{label}</SpellLink>
+      ) : label;
+      return (
+        <div
+          className="flex"
+          style={{
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            marginBottom: ((numItems - 1) === index) ? 0 : 5,
+          }}
+          key={index}
+        >
+          <div className="flex-sub">
+            <div
+              style={{
+                display: 'inline-block',
+                background: color,
+                borderRadius: '50%',
+                width: 16,
+                height: 16,
+                marginBottom: -3,
+              }}
+            />
+          </div>
+          <div className="flex-main" style={{ paddingLeft: 5 }}>
+            {label}
+          </div>
+          <div className="flex-sub">
+            <dfn data-tip={tooltip}>
+              {value}
+            </dfn>
+          </div>
+        </div>
+      );
+    });
+  }
+
+  doughnut(items) {
+    return (
+      <DoughnutChart
+        data={{
+          datasets: [{
+            data: items.map(item => item.value),
+            backgroundColor: items.map(item => item.color),
+            borderColor: '#000000',
+            borderWidth: 1.5,
+          }],
+          labels: items.map(item => item.label),
+        }}
+        options={{
+          legend: {
+            display: false,
+          },
+          tooltips: {
+            bodyFontSize: 10,
+          },
+          cutoutPercentage: 35,
+          animation: false,
+          responsive: false,
+        }}
+        width={CHART_SIZE}
+        height={CHART_SIZE}
+      />
+    );
+  }
+
+  combinedChart() {
     const items = this.spenders
       .filter(spender => spender.count !== 0)
-      .map(spender => ({
-        color: spender.chartColor,
-        label: spender.spell.name,
-        spellId: spender.spell.id,
-        value: spender.count,
-        valueTooltip: <><b>{spender.count}</b> charge{spender.count !== 1 ? 's' : ''} used on {spender.spell.name}.</>,
-      }));
+      .map((spender) => {
+        const castCount = this.abilityTracker.getAbility(spender.spell.id).casts;
+        const notBuffedCount = castCount - spender.count;
+        return {
+          color: spender.chartColor,
+          label: spender.spell.name,
+          spellId: spender.spell.id,
+          value: spender.count,
+          tooltip: `${spender.spell.name} was buffed by Bloodtalons <b>${spender.count}</b> (<b>${formatPercentage(spender.count / castCount, 0)}%</b>) time${spender.count === 1 ? '' : 's'}.<br />
+            <b>${notBuffedCount}</b> use${notBuffedCount === 1 ? '' : 's'} of ${spender.spell.name} ${notBuffedCount === 1 ? 'was' : 'were'} not buffed by Bloodtalons.<br />
+            <b>${formatPercentage(spender.count / this.generated, 0)}%</b> of Bloodtalons charges were used on ${spender.spell.name}.`,
+        };
+      });
 
     items.push({
       color: CHART_COLOR_WASTED,
       label: 'Wasted',
       value: this.wasted,
-      valueTooltip: (<>
-        <b>{this.wasted}</b> Bloodtalons charge{this.wasted !== 1 ? 's were' : ' was'} wasted.<br />
+      tooltip: `<b>${this.wasted}</b> (<b>${formatPercentage(this.wasted / this.generated, 0)}%</b>) Bloodtalons charge${this.wasted !== 1 ? 's were' : ' was'} wasted.
         <ul>
-          <li>You lost <b>{this.overwritten}</b> by casting Regrowth or Entangling Roots when you already had charges.</li>
-          <li>You lost <b>{this.expired}</b> by allowing {this.expired !== 1 ? 'them' : 'it'} to expire.</li>
-          <li>You lost <b>{this.remainAfterFight}</b> by having {this.remainAfterFight !== 1 ? 'them' : 'it'} left over at the fight's end.</li>
-        </ul>
-      </>),
+          <li>You lost <b>${this.overwritten}</b> by casting Regrowth or Entangling Roots when you already had charges.</li>
+          <li>You lost <b>${this.expired}</b> by allowing ${this.expired !== 1 ? 'them' : 'it'} to expire.</li>
+          <li>You lost <b>${this.remainAfterFight}</b> by having ${this.remainAfterFight !== 1 ? 'them' : 'it'} left over at the fight's end.</li>
+        </ul>`,
     });
 
     return (

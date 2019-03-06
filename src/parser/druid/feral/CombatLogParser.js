@@ -3,6 +3,7 @@ import CoreCombatLogParser from 'parser/core/CombatLogParser';
 import RakeBleed from './normalizers/RakeBleed';
 import ComboPointsFromAoE from './normalizers/ComboPointsFromAoE';
 import BleedDebuffEvents from './normalizers/BleedDebuffEvents';
+import RipCastNormalizer from './normalizers/RipCastNormalizer';
 
 import Abilities from './modules/Abilities';
 import Buffs from './modules/Buffs';
@@ -51,6 +52,7 @@ class CombatLogParser extends CoreCombatLogParser {
     rakeBleed: RakeBleed,
     bleedDebuffEvents: BleedDebuffEvents,
     comboPointsFromAoE: ComboPointsFromAoE,
+    ripCastNormalizer: RipCastNormalizer,
 
     // Features
     alwaysBeCasting: AlwaysBeCasting,
