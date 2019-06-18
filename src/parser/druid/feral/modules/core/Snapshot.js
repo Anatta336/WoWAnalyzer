@@ -11,7 +11,7 @@ import calculateEffectiveDamage from 'parser/core/calculateEffectiveDamage';
 import StatisticsListBox from 'interface/others/StatisticsListBox';
 import { PANDEMIC_FRACTION, PROWL_RAKE_DAMAGE_BONUS, TIGERS_FURY_DAMAGE_BONUS, BLOODTALONS_DAMAGE_BONUS } from '../../constants';
 
-const debug = true;
+const debug = false;
 
 /**
  * Feral has a snapshotting mechanic which means the effect of some buffs are maintained over the duration of
