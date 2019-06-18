@@ -4,6 +4,7 @@ import RakeBleed from './normalizers/RakeBleed';
 import ComboPointsFromAoE from './normalizers/ComboPointsFromAoE';
 import BleedDebuffEvents from './normalizers/BleedDebuffEvents';
 import RipCastNormalizer from './normalizers/RipCastNormalizer';
+import BleedDebuffEvents from './normalizers/BleedDebuffEvents';
 
 import Abilities from './modules/Abilities';
 import Buffs from './modules/Buffs';
